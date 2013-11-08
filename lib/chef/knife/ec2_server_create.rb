@@ -252,6 +252,11 @@ class Chef
         :description => "The EC2 server attribute to use for SSH connection",
         :default => nil
 
+      option :spot_price,
+        :long => "--spot-price PRICE",
+        :description => "The maximum hourly USD price for the instance",
+        :default => nil
+
     def tcp_test_winrm(ip_addr, port)
       tcp_socket = TCPSocket.new(ip_addr, port)
       yield
@@ -354,6 +359,19 @@ class Chef
 
         # For VPC EIP assignment we need the allocation ID so fetch full EIP details
         elastic_ip = connection.addresses.detect{|addr| addr if addr.public_ip == requested_elastic_ip}
+
+        if locate_config_value(:spot_price)
+          spot_request = connection.spot_requests.create(create_server_def)
+          msg_pair("Spot Request ID", spot_request.id)
+          msg_pair("Spot Request Type", spot_request.request_type)
+          msg_pair("Spot Price", spot_request.price)
+          print "\n#{ui.color("Waiting for spot request to be fufilled", :magenta)}"
+          spot_request.wait_for { print "."; state == 'active' }
+          puts("\n")
+          @server = connection.servers.get(spot_request.instance_id)
+        else
+          @server = connection.servers.create(create_server_def)
+        end
 
         @server = connection.servers.create(create_server_def)
 

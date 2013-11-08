@@ -255,6 +255,7 @@ class Chef
       option :spot_price,
         :long => "--spot-price PRICE",
         :description => "The maximum hourly USD price for the instance",
+        :proc => Proc.new { |price| Chef::Config[:knife][:spot_price] = price },
         :default => nil
 
     def tcp_test_winrm(ip_addr, port)
